@@ -16,18 +16,18 @@ import matplotlib.pyplot as plt
 import wx.lib.scrolledpanel as scrolled
 
 net = pysmile.Network()
-net.read_file("operator_sieci_komorkowej.xdsl")
+net.read_file("operator_sieci_komorkowej_v3.xdsl")
 net.update_beliefs()
 
 options = [
-    'Brak_sta_lej_o_aty', 'Na_firm_', 'Brak_umowy', 'Nowy_telefon',
-    'Znajomi_maj__iPhone_y'
+    'Brak_stalej_oplaty', 'Na_firme', 'Brak_umowy', 'Nowy_telefon',
+    'Znajomi_maja_iPhoney'
 ]
 
-indirect_facts = ['Elastyczno__', 'Do_adowania', 'Oferta_MIX_z_telefonem',
-                  'Oferta_z_telefonem', 'Rachunek', 'Abonament_z_telefonem']
+indirect_facts = ['Doladowania', 'Oferta_MIX_z_telefonem',
+                  'Oferta_z_telefonem', 'Abonament_z_telefonem']
 
-offers = ['Oferta_na_kart_', 'Oferta_MIX', 'Oferta_MIX_z_Androidem',
+offers = ['Oferta_na_karte', 'Oferta_MIX', 'Oferta_MIX_z_Androidem',
           'Oferta_MIX_z_iPhonem', 'Abonament_z_iPhonem',
           'Abonament_z_Androidem', 'Abonament']
 
@@ -38,6 +38,13 @@ OPTIONS_Y = 1
 OPTIONS_X = 5
 OPTIONS_X_SPACE = 10
 OPTIONS_Y_SPACE = 20
+
+user_choices_mapping = {
+    0: 'Nie',
+    1: 'Nie_wiem',
+    2: 'Moze',
+    3: 'Tak'
+}
 
 
 def set_background(obj, image_path):
@@ -57,11 +64,11 @@ def set_background(obj, image_path):
 class OptionsView(wx.Panel):
     def __init__(self, parent, option_name):
         wx.Panel.__init__(self, parent, style=wx.RAISED_BORDER,
-                          size=(250, 145))
+                          size=(250, 160))
         # set_background(self, 'im2.resized.jpeg')
         self.option_name = option_name
         self.value = 0
-        self.option_toggle = None
+        self.option_slider = None
         self.checkbox = None
         self.checkbox_label = None
 
@@ -74,22 +81,22 @@ class OptionsView(wx.Panel):
         options_sizer.AddSpacer(20)
         options_sizer.Add(self.add_checkbox_label(), flag=wx.CENTER)
         options_sizer.Add(self.add_checkbox(), flag=wx.CENTER)
-        options_sizer.AddSpacer(10)
-        options_sizer.Add(self.add_option_toggle(), flag=wx.CENTER)
+        options_sizer.Add(self.add_option_slider(), 1,
+                          flag=wx.CENTER)
         self.SetSizer(options_sizer)
 
-    def add_option_toggle(self):
-        self.option_toggle = wx.ToggleButton(self, label='Tak')
-        self.option_toggle.Disable()
-        self.option_toggle.Bind(wx.EVT_TOGGLEBUTTON, self.on_toggle)
-        return self.option_toggle
+    def add_option_slider(self):
+        self.option_slider = wx.Slider(self, value=0, minValue=0, maxValue=3,
+                                       style=wx.SL_HORIZONTAL | wx.SL_LABELS,
+                                       size=(200, 10))
+        self.option_slider.Disable()
+        self.option_slider.Bind(wx.EVT_SLIDER, self.on_slide)
+        return self.option_slider
 
-    def on_toggle(self, _):
-        # TODO: use event
-        if self.value == 0:
-            self.value = 1
-        else:
-            self.value = 0
+    def on_slide(self, event):
+        event_object = event.GetEventObject()
+        event_value = event_object.GetValue()
+        self.value = event_value
 
     def add_checkbox(self):
         self.checkbox = wx.CheckBox(self)
@@ -105,12 +112,13 @@ class OptionsView(wx.Panel):
 
     def on_checked(self, _):
         active = self.checkbox.GetValue()
-        self.option_toggle.Enable(active)
+        self.option_slider.Enable(active)
 
     def reset(self):
         self.checkbox.SetValue(False)
         self.value = 0
-        self.option_toggle.Disable()
+        self.option_slider.SetValue(0)
+        self.option_slider.Disable()
 
 
 def display_probabilities(facts, title, fig):
@@ -190,8 +198,9 @@ class Form(scrolled.ScrolledPanel):
             for ov in self.options_views:
                 if ov.checkbox.GetValue():
                     probability = ov.value
-                    net.set_virtual_evidence(ov.option_name,
-                                             [probability, 1 - probability])
+                    net.set_evidence(ov.option_name,
+                                     user_choices_mapping[probability])
+
         self.update_network(update_fun)
 
     def new_bar_chart_canvas(self):
